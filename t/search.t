@@ -22,28 +22,30 @@ my $test_api_key     = 'testing123';
 
 my $mock = Mojolicious::Lite->new;
 
-$mock->routes->post("$test_service_url/indexes/:index/docs/search" => sub {
-      my $c = shift;
-      if ($c->req->json->{'invalid_argument'}) {
-         return $c->render(
-            status => 400,
+$mock->routes->post(
+    "$test_service_url/indexes/:index/docs/search" => sub {
+        my $c = shift;
+        if ($c->req->json->{'invalid_argument'}) {
+            return $c->render(
+                status => 400,
+                json   => {
+                    error => {
+                        code => '',
+                        message =>
+                            "The request is invalid. Details: parameters : The parameter 'invalid_argument' in the request payload is not a valid parameter for the operation 'search'.\cM\cJ"
+                    }
+                }
+            );
+        }
+        return $c->render(
+            status => 200,
             json   => {
-               error => {
-                  code => '',
-                  message => "The request is invalid. Details: parameters : The parameter 'invalid_argument' in the request payload is not a valid parameter for the operation 'search'.\cM\cJ"
-               }
+                '@odata.count'   => 1,
+                '@odata.context' => "$test_service_url/indexes(\'index\')/\$metadata#docs",
+                values           => [{'@search.score' => 1, 'string' => 'abcdefghijklmnopqrstuvwyxz', 'double' => 3.14, 'boolean' => \1,}]
             }
-         );
-      }
-      return $c->render(
-         status => 200,
-         json   => {
-            '@odata.count'   => 1,
-            '@odata.context' => "$test_service_url/indexes(\'index\')/\$metadata#docs",
-            values           => [{'@search.score' => 1, 'string' => 'abcdefghijklmnopqrstuvwyxz', 'double' => 3.14, 'boolean' => \1,}]
-         }
-      );
-   }
+        );
+    }
 );
 
 # Leverage the mockup and run a couple of search queries
@@ -54,11 +56,11 @@ is(ref $test_user_agent, 'Mojo::UserAgent', 'Created Mojo::UserAgent object');
 $test_user_agent->server->app($mock);
 
 my $azs = Azure::Search->new(
-   service_url => $test_service_url,
-   index       => $test_index,
-   api_version => $test_api_version,
-   api_key     => $test_api_key,
-   user_agent  => $test_user_agent,
+    service_url => $test_service_url,
+    index       => $test_index,
+    api_version => $test_api_version,
+    api_key     => $test_api_key,
+    user_agent  => $test_user_agent,
 );
 
 is(ref $azs, 'Azure::Search', "Created Azure::Search object");

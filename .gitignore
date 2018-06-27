@@ -8,6 +8,11 @@
 *.bs
 *.bak
 *.tdy
+.DS_Store
+MYMETA.yml
+MYMETA.json
+
+Azure-Search-*
 
 # Devel::Cover
 cover_db/

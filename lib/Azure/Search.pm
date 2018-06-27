@@ -8,43 +8,43 @@ use Carp;
 our $VERSION = '0.01';
 
 sub new {
-   my ($class, %args) = @_;
-   my $this = {};
-   bless $this, $class;
-   $this->_init(%args);
-   return $this;
+    my ($class, %args) = @_;
+    my $this = {};
+    bless $this, $class;
+    $this->_init(%args);
+    return $this;
 }
 
 sub _init {
-   my ($self, %args) = @_;
+    my ($self, %args) = @_;
 
-   if (defined $args{'service_url'}) {
-      $self->{'service_url'} = $args{'service_url'};
-   }
-   elsif (defined $args{'service_name'}) {
-      $self->{'service_url'} = "https://$args{service_name}.search.windows.net";
-   }
-   else {
-      carp "Either service_name or service_url are required with Azure::Search";
-   }
+    if (defined $args{'service_url'}) {
+        $self->{'service_url'} = $args{'service_url'};
+    }
+    elsif (defined $args{'service_name'}) {
+        $self->{'service_url'} = "https://$args{service_name}.search.windows.net";
+    }
+    else {
+        carp "Either service_name or service_url are required with Azure::Search";
+    }
 
-   my @required_args = qw(index api_version api_key);
-   for my $arg (@required_args) {
-      $self->{$arg} = $args{$arg} // carp "$arg is required with Azure::Search";
-   }
+    my @required_args = qw(index api_version api_key);
+    for my $arg (@required_args) {
+        $self->{$arg} = $args{$arg} // carp "$arg is required with Azure::Search";
+    }
 
-   if ($args{user_agent}) {
-      $self->{user_agent} = $args{user_agent};
-   }
-   else {
-      $self->{user_agent} = Mojo::UserAgent->new();
-   }
+    if ($args{user_agent}) {
+        $self->{user_agent} = $args{user_agent};
+    }
+    else {
+        $self->{user_agent} = Mojo::UserAgent->new();
+    }
 }
 
 sub search_index {
-   my ($self, %args) = @_;
-   my $url = "$self->{service_url}/indexes/$self->{index}/docs/search?api-version=$self->{api_version}";
-   return $self->{user_agent}->post($url => {'api-key' => $self->{api_key}} => json => \%args);
+    my ($self, %args) = @_;
+    my $url = "$self->{service_url}/indexes/$self->{index}/docs/search?api-version=$self->{api_version}";
+    return $self->{user_agent}->post($url => {'api-key' => $self->{api_key}} => json => \%args);
 }
 
 1;
