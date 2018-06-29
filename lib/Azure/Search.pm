@@ -41,10 +41,42 @@ sub _init {
     }
 }
 
-sub search_index {
+sub search_documents {
     my ($self, %args) = @_;
     my $url = "$self->{service_url}/indexes/$self->{index}/docs/search?api-version=$self->{api_version}";
     return $self->{user_agent}->post($url => {'api-key' => $self->{api_key}} => json => \%args);
+}
+
+sub upload_documents {
+    my ($self, @documents) = @_;
+    return $self->_cud_documents('upload', @documents);
+}
+
+sub merge_documents {
+    my ($self, @documents) = @_;
+    return $self->_cud_documents('merge', @documents);
+}
+
+sub merge_or_upload_documents {
+    my ($self, @documents) = @_;
+    return $self->_cud_documents('mergeOrUpload', @documents);
+}
+
+sub delete_documents {
+    my ($self, @documents) = @_;
+    return $self->_cud_documents('delete', @documents);
+}
+
+##
+## CUD -> create, update, delete, (upsert too), but not read.  Read is handled by search_documents.
+##
+sub _cud_documents {
+    my ($self, $action, @documents) = @_;
+    for my $document (@documents) {
+        $document->{'@search.action'} = $action;
+    }
+    my $url = "$self->{service_url}/indexes/$self->{index}/docs/index?api-version=$self->{api_version}";
+    return $self->{user_agent}->post($url => {'api-key' => $self->{api_key}} => json => {value => \@documents});
 }
 
 1;
@@ -64,28 +96,14 @@ Azure::Search - Perl interacting with Azure Search's REST API.
         api_key      => '<api_key>',
     );
 
-    my $tx = $azs->search_index(
+    my $tx = $azs->search_documents(
         search      => '*',
         count       => \1,
         top         => 1,
     );
 
-    # Parse rest response as you would with other Mojo::Transaction::HTTP object
-
-    if (!$tx->success) {
-        my $code = $tx->error->{code};
-        my $message = $tx->error->{message};
-        carp "Azure Search Call returned: $code: $message";
-    }
-    elsif ($tx->result->code != 200) {
-        my $code = $tx->result->code;
-        my $body = $tx->result->body;
-        carp "Azure Search Call returned: $code: $body";
-    }
-    else {
-        say "NUMBER OF RESULTS: " . $tx->result->json->{'@odata.count'};
-        say "DUMP OF RESULTS: " . Dumper($tx->result->json);
-    }
+    ## Parse rest response as you would with other Mojo::Transaction::HTTP object
+    ## See EXAMPLES below for more details.
 
 =head1 DESCRIPTION
 
@@ -112,11 +130,55 @@ Optional:
 
 user_agent - your own Mojo::UserAgent object (useful for mockups/testing)
 
-=item search_index(%args)
+=item search_documents(%args)
 
 This will run a query on your $azs object to query your search index with %args passed
 along to the rest api.  I will provide some examples below, but for a full list of
-options please go to the Microsoft site at L<http://docs.microsoft.com/en-us/rest/api/searchservice/search-documents>
+options please go to:
+
+L<https://docs.microsoft.com/en-us/rest/api/searchservice/search-documents>
+
+=item upload_documents(@documents)
+
+Upload an array of hash ref documents to the index.  This replaces the document
+if it already exists in the index.
+
+For more information on upload, merge_or_upload, or delete look at:
+
+L<https://docs.microsoft.com/en-us/rest/api/searchservice/addupdate-or-delete-documents>
+
+=item merge_documents(@documents)
+
+Merge documents onto the index.  This fails if the document does not already exist
+in the index, and it merges the hash keys.
+
+Merge documents can return a success on $tx->success, while still having errors on individual documents.
+You should loop through each document to see each documents status.  See the EXAMPLE below.
+
+For more information on upload, merge_or_upload, or delete look at:
+
+L<https://docs.microsoft.com/en-us/rest/api/searchservice/addupdate-or-delete-documents>
+
+=item merge_or_upload_documents(@documents)
+
+Merge or upload documents onto the index.  It does not overwrite and it does create if needed.
+This method is more forgiving than merge in the situation where a document does not exist in
+the index yet, so you do not have to loop through the status of each individual document
+being merge_or_uploaded.
+
+For more information on upload, merge_or_upload, or delete look at:
+
+L<https://docs.microsoft.com/en-us/rest/api/searchservice/addupdate-or-delete-documents>
+
+=item delete_documents(@documents)
+
+Delete documents from the index -- not individual fields. The microsoft documentation states
+to delete a field use merge instead, and submit the document with a null (undef in perl)
+value for the field you wish to delete.
+
+For more information on upload, merge_or_upload, or delete look at:
+
+L<https://docs.microsoft.com/en-us/rest/api/searchservice/addupdate-or-delete-documents>
 
 =back
 
@@ -124,18 +186,31 @@ options please go to the Microsoft site at L<http://docs.microsoft.com/en-us/res
 
     Search for anything and grab the first value and a count of matches.
 
-    my $tx = $azs->search_index(
+    my $tx = $azs->search_documents(
         search      => '*',
         count       => \1,
         top         => 1,
     );
+
+    Review $tx for search_documents errors:
+
+    if (!$tx->success) {
+        my $code = $tx->error->{code};
+        my $message = $tx->error->{message};
+        my $body = $tx->result->body;
+        carp "Azure Search Call returned: $code: $message: $body";
+    }
+    else {
+        say "NUMBER OF RESULTS: " . $tx->result->json->{'@odata.count'};
+        say "DUMP OF RESULTS: " . Dumper($tx->result->json);
+    }
 
     Search the index by the name field, where the name is not Brian.
     Filter the results further for non-Brians who have an address
     and a date lt 2018-06-26. Please note boolean and date fields
     can not be searched directly, but they can be filtered.
 
-    my $tx = $azs->search_index(
+    my $tx = $azs->search_documents(
         search    => '-name:Brian',
         top       => 100,
         queryType => 'full',
@@ -144,8 +219,55 @@ options please go to the Microsoft site at L<http://docs.microsoft.com/en-us/res
         filter    => 'date lt 2018-06-26 AND have_address eq true',
     );
 
-=head1 AUTHOR
+    Upload documents to the search index.
 
-Brian Mielke <bbmielke@gmail.com>
+    my $tx = $azs->upload_documents(
+        {
+            name => 'Brian1',
+            date => DateTime->now->iso8601 . 'Z',
+            have_address => \1,
+        },
+        {
+            name => 'Brian2',
+            date => DateTime->now->iso8601 . 'Z',
+            have_address => \0,
+        },
+    );
+
+    Review $tx for upload_documents errors:
+
+    if (!$tx->success) {
+        my $code = $tx->error->{code};
+        my $message = $tx->error->{message};
+        my $body = $tx->result->body;
+        carp "Azure Search Call returned: $code: $message: $body";
+    }
+
+    #Modify existing documents with new hash entries:
+
+    my $tx = $azs->merge_documents({'name' => 'does not exist yet', have_address=>\0}, {'name' => 'Brian', have_address => \0});
+
+    # Review $tx for merge_documents errors:
+
+    if (!$tx->success) {
+        my $code = $tx->error->{code};
+        my $message = $tx->error->{message};
+        my $body = $tx->result->body;
+        carp "Azure Search Call returned: $code: $message: $body";
+    }
+    else {
+        for my $document (@{$tx->result->json->{value}}) {
+            if($document->{'statusCode'} != 200) {
+                carp "Document uploaded with unexpected statusCode - $document->{'key'}: $document->{statusCode}: $document->{errorMessage}";
+            }
+        }
+    }
+
+    Upload documents without overwriting all old hash entries with merge_or_upload:
+
+    my $tx = $azs->merge_or_upload_documents({'name' => 'does not exist yet', have_address=>\0}, {'name' => 'Brian', have_address => \0});
+
+    This method is more forgiving than merge_documents, so you do not have to loop through each individual document to check the status, but you can if you wish.
+
 
 =cut
