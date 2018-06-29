@@ -80,6 +80,36 @@ sub _cud_documents {
     return $self->{user_agent}->post($url => {'api-key' => $self->{api_key}} => json => {value => \@documents});
 }
 
+sub create_index {
+    my ($self, @fields) = @_;
+    my $url = "$self->{service_url}/indexes?api-version=$self->{api_version}";
+    return $self->{user_agent}->post($url => {'api-key' => $self->{api_key}} => json => {name => $self->{index}, fields => \@fields});
+}
+
+sub update_index {
+    my ($self, @fields) = @_;
+    my $url = "$self->{service_url}/indexes/$self->{index}?api-version=$self->{api_version}";
+    return $self->{user_agent}->put($url => {'api-key' => $self->{api_key}} => json => {name => $self->{index}, fields => \@fields});
+}
+
+sub delete_index {
+    my ($self) = @_;
+    my $url = "$self->{service_url}/indexes/$self->{index}?api-version=$self->{api_version}";
+    return $self->{user_agent}->delete($url => {'api-key' => $self->{api_key}});
+}
+
+sub get_index {
+    my ($self) = @_;
+    my $url = "$self->{service_url}/indexes/$self->{index}?api-version=$self->{api_version}";
+    return $self->{user_agent}->get($url => {'api-key' => $self->{api_key}});
+}
+
+sub get_indexes {
+    my ($self) = @_;
+    my $url = "$self->{service_url}/indexes?api-version=$self->{api_version}";
+    return $self->{user_agent}->get($url => {'api-key' => $self->{api_key}});
+}
+
 1;
 
 =head1 NAME
@@ -181,6 +211,35 @@ For more information on upload, merge_or_upload, or delete look at:
 
 L<https://docs.microsoft.com/en-us/rest/api/searchservice/addupdate-or-delete-documents>
 
+=item create_index(@fields)
+
+Create an index for @fields.  There are a lot of field options.  Please look at the microsoft site
+for complete details.  I'll have an example of one below.
+
+L<https://docs.microsoft.com/en-us/rest/api/searchservice/create-index>
+
+Please note the rules on the 'key' field.  They can't be utf8 but other string fields can be.
+
+=item update_index(@fields)
+
+Update an index for @fields.  This is a very finicky operation.  It does not seem to allow you to
+change fields from searchable => false to true, but it does allow you to add new fields to the
+index.
+
+L<https://docs.microsoft.com/en-us/rest/api/searchservice/update-index>
+
+=item delete_index
+
+Delete the index.
+
+=item get_index
+
+Return details on the index.
+
+=item get_indexes
+
+Return details on all indexes.
+
 =back
 
 =head1 EXAMPLES
@@ -270,5 +329,45 @@ L<https://docs.microsoft.com/en-us/rest/api/searchservice/addupdate-or-delete-do
 
     This method is more forgiving than merge_documents, so you do not have to loop through each individual document to check the status, but you can if you wish.
 
+    Create an index with a variety (but not a complete slice) of the available options:
+
+    my $tx = $azs->create_index(
+        {
+            name => 'name',
+            type => 'Edm.String',
+            key => $JSON::PP::true,
+            searchable => $JSON::PP::true,
+            filterable => $JSON::PP::true,
+            retrievable => $JSON::PP::true,
+        },
+        {
+            name => 'age',
+            type => 'Edm.Int32',
+            key => $JSON::PP::false,
+            searchable => $JSON::PP::false,
+            filterable => $JSON::PP::true,
+            retrievable => $JSON::PP::true,
+        },
+        {
+            name => 'have_address',
+            type => 'Edm.Boolean',
+            key => $JSON::PP::false,
+            searchable => $JSON::PP::false,
+            filterable => $JSON::PP::true,
+            retrievable => $JSON::PP::true,
+        },
+        {
+            name => 'date',
+            type => 'Edm.DateTimeOffset',
+            key => $JSON::PP::false,
+            searchable => $JSON::PP::false,
+            filterable => $JSON::PP::true,
+            retrievable => $JSON::PP::true,
+        },
+    );
+
+    die "Error creating index" if(!$tx->success || $tx->result->code != 201);
+
+    # Update index works similarily as the call above but you check for != 204 in the response code
 
 =cut

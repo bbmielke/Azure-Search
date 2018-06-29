@@ -83,6 +83,41 @@ $mock->routes->post(
     }
 );
 
+$mock->routes->post(
+    "$test_service_url/indexes" => sub {
+        my $c = shift;
+        return $c->render(status => 201, json => {});
+    },
+);
+
+$mock->routes->put(
+    "$test_service_url/indexes/:index" => sub {
+        my $c = shift;
+        return $c->render(status => 204, json => {});
+    },
+);
+
+$mock->routes->delete(
+    "$test_service_url/indexes/:index" => sub {
+        my $c = shift;
+        return $c->render(status => 204, json => {});
+    },
+);
+
+$mock->routes->get(
+    "$test_service_url/indexes/:index" => sub {
+        my $c = shift;
+        return $c->render(status => 200, json => {});
+    },
+);
+
+$mock->routes->get(
+    "$test_service_url/indexes/" => sub {
+        my $c = shift;
+        return $c->render(status => 200, json => {});
+    },
+);
+
 # Leverage the mockup and run a couple of search queries
 
 my $test_user_agent = Mojo::UserAgent->new();
@@ -100,7 +135,24 @@ my $azs = Azure::Search->new(
 
 is(ref $azs, 'Azure::Search', "Created Azure::Search object");
 
-my $tx = $azs->search_documents('search' => '*', 'count' => $JSON::PP::true,);
+my $tx;
+
+$tx = $azs->create_index({'key' => $JSON::PP::true, 'name' => 'name', 'type' => 'Edm.String'});
+is($tx->result->code, 201, 'create_index1 mocked test');
+
+$tx = $azs->update_index({'key' => $JSON::PP::true, 'name' => 'name', 'type' => 'Edm.String'});
+is($tx->result->code, 204, 'update_index1 mocked test');
+
+$tx = $azs->get_index({'key' => $JSON::PP::true, 'name' => 'name', 'type' => 'Edm.String'});
+is($tx->result->code, 200, 'get_index1 mocked test');
+
+$tx = $azs->get_indexes({'key' => $JSON::PP::true, 'name' => 'name', 'type' => 'Edm.String'});
+is($tx->result->code, 200, 'get_indexes1 mocked test');
+
+$tx = $azs->delete_index({'key' => $JSON::PP::true, 'name' => 'name', 'type' => 'Edm.String'});
+is($tx->result->code, 204, 'delete_index mocked test');
+
+$tx = $azs->search_documents('search' => '*', 'count' => $JSON::PP::true,);
 ok($tx->success, "search_documents1 success check");
 ok(!$tx->error,  "search_documents1 error check");
 is($tx->result->code,                          200,             "search_documents1 result code check");

@@ -99,6 +99,35 @@ Leverage [Mojo::UserAgent](https://metacpan.org/pod/Mojo::UserAgent) to interact
 
     [https://docs.microsoft.com/en-us/rest/api/searchservice/addupdate-or-delete-documents](https://docs.microsoft.com/en-us/rest/api/searchservice/addupdate-or-delete-documents)
 
+- create\_index(@fields)
+
+    Create an index for @fields.  There are a lot of field options.  Please look at the microsoft site
+    for complete details.  I'll have an example of one below.
+
+    [https://docs.microsoft.com/en-us/rest/api/searchservice/create-index](https://docs.microsoft.com/en-us/rest/api/searchservice/create-index)
+
+    Please note the rules on the 'key' field.  They can't be utf8 but other string fields can be.
+
+- update\_index(@fields)
+
+    Update an index for @fields.  This is a very finicky operation.  It does not seem to allow you to
+    change fields from searchable => false to true, but it does allow you to add new fields to the
+    index.
+
+    [https://docs.microsoft.com/en-us/rest/api/searchservice/update-index](https://docs.microsoft.com/en-us/rest/api/searchservice/update-index)
+
+- delete\_index
+
+    Delete the index.
+
+- get\_index
+
+    Return details on the index.
+
+- get\_indexes
+
+    Return details on all indexes.
+
 # NAME
 
 Azure::Search - Perl interacting with Azure Search's REST API.
@@ -189,6 +218,47 @@ Azure::Search - Perl interacting with Azure Search's REST API.
     my $tx = $azs->merge_or_upload_documents({'name' => 'does not exist yet', have_address=>\0}, {'name' => 'Brian', have_address => \0});
 
     This method is more forgiving than merge_documents, so you do not have to loop through each individual document to check the status, but you can if you wish.
+
+    Create an index with a variety (but not a complete slice) of the available options:
+
+    my $tx = $azs->create_index(
+        {
+            name => 'name',
+            type => 'Edm.String',
+            key => $JSON::PP::true,
+            searchable => $JSON::PP::true,
+            filterable => $JSON::PP::true,
+            retrievable => $JSON::PP::true,
+        },
+        {
+            name => 'age',
+            type => 'Edm.Int32',
+            key => $JSON::PP::false,
+            searchable => $JSON::PP::false,
+            filterable => $JSON::PP::true,
+            retrievable => $JSON::PP::true,
+        },
+        {
+            name => 'have_address',
+            type => 'Edm.Boolean',
+            key => $JSON::PP::false,
+            searchable => $JSON::PP::false,
+            filterable => $JSON::PP::true,
+            retrievable => $JSON::PP::true,
+        },
+        {
+            name => 'date',
+            type => 'Edm.DateTimeOffset',
+            key => $JSON::PP::false,
+            searchable => $JSON::PP::false,
+            filterable => $JSON::PP::true,
+            retrievable => $JSON::PP::true,
+        },
+    );
+
+    die "Error creating index" if(!$tx->success || $tx->result->code != 201);
+
+    # Update index works similarily as the call above but you check for != 204 in the response code
 
 # AUTHOR
 
