@@ -72,7 +72,7 @@ Leverage [Mojo::UserAgent](https://metacpan.org/pod/Mojo::UserAgent) to interact
     in the index, and it merges the hash keys.
 
     Merge documents can return a success on $tx->success, while still having errors on individual documents.
-    You should loop through each document to see each documents status.  See the EXAMPLE below.
+    You should loop through each document to see each documents status.  See the EXAMPLE below (or review search\_online.t for example)
 
     For more information on upload, merge\_or\_upload, or delete look at:
 

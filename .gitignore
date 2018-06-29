@@ -11,6 +11,7 @@
 .DS_Store
 MYMETA.yml
 MYMETA.json
+test_online.yml
 
 Azure-Search-*
 

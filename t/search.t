@@ -5,13 +5,14 @@ use Test::More;
 use_ok('Mojolicious::Lite');
 use_ok('Mojo::UserAgent');
 use_ok('Azure::Search');
+use_ok('JSON::PP');
 
 my $test_index       = 'index';
 my $test_service_url = '/mojo_test';
 my $test_api_version = '2017-11-11';
 my $test_api_key     = 'testing123';
 
-my @test_documents1 = ({'name' => 'Brian', have_address => \1});
+my @test_documents1 = ({'name' => 'Brian', have_address => $JSON::PP::true});
 
 ##
 ## This is a challenge to test effectively in a unit test setup since
@@ -44,7 +45,7 @@ $mock->routes->post(
             json   => {
                 '@odata.count'   => 1,
                 '@odata.context' => "$test_service_url/indexes('index')/\$metadata#docs",
-                values           => [{'@search.score' => 1, 'string' => 'abcdefghijklmnopqrstuvwyxz', 'double' => 3.14, 'boolean' => \1,}]
+                value => [{'@search.score' => 1, 'string' => 'abcdefghijklmnopqrstuvwyxz', 'double' => 3.14, 'boolean' => $JSON::PP::true,}]
             }
         );
     },
@@ -56,7 +57,7 @@ $mock->routes->post(
         if (   defined $c->req->json
             && defined $c->req->json->{'value'}
             && $c->req->json->{'value'}[0]
-            && $c->req->json->{'value'}[0]{'@search.action'} =~ /^(merge|delete)/)
+            && $c->req->json->{'value'}[0]{'@search.action'} =~ /^(merge|delete)$/)
         {
             $statusCode = 200;
         }
@@ -76,7 +77,7 @@ $mock->routes->post(
             status => 200,
             json   => {
                 '@odata.context' => "$test_service_url/indexes('index')/\$metadata#Collection(Microsoft.Azure.Search.V2017_11_11.IndexResult)",
-                values           => [{errorMessage => undef, key => 'Brian', status => \1, statusCode => $statusCode}]
+                value            => [{errorMessage => undef, key => 'Brian', status => $JSON::PP::true, statusCode => $statusCode}]
             }
         );
     }
@@ -99,12 +100,12 @@ my $azs = Azure::Search->new(
 
 is(ref $azs, 'Azure::Search', "Created Azure::Search object");
 
-my $tx = $azs->search_documents('search' => '*', 'count' => \1,);
+my $tx = $azs->search_documents('search' => '*', 'count' => $JSON::PP::true,);
 ok($tx->success, "search_documents1 success check");
 ok(!$tx->error,  "search_documents1 error check");
-is($tx->result->code,                           200,             "search_documents1 result code check");
-is($tx->result->json->{'@odata.count'},         1,               "search_documents1 count check");
-is($tx->result->json->{'values'}[0]{'boolean'}, $JSON::PP::true, "search_documents1 values check");
+is($tx->result->code,                          200,             "search_documents1 result code check");
+is($tx->result->json->{'@odata.count'},        1,               "search_documents1 count check");
+is($tx->result->json->{'value'}[0]{'boolean'}, $JSON::PP::true, "search_documents1 value check");
 
 $tx = $azs->search_documents('search' => '*', 'invalid_argument' => 'invalid',);
 ok(!$tx->success, "search_documents2 success check");
@@ -114,8 +115,8 @@ is($tx->result->code, 400, "search_documents2 result code check");
 $tx = $azs->upload_documents(@test_documents1);
 ok($tx->success, "upload_documents1 success check");
 ok(!$tx->error,  "upload_documents1 error check");
-is($tx->result->code,                          200, "upload_documents1 result code check");
-is($tx->result->json->{values}[0]{statusCode}, 201, "upload_documents1 value statusCode check");
+is($tx->result->code,                         200, "upload_documents1 result code check");
+is($tx->result->json->{value}[0]{statusCode}, 201, "upload_documents1 value statusCode check");
 
 $tx = $azs->upload_documents();
 ok(!$tx->success, "upload_documents2 success check");
@@ -123,18 +124,18 @@ ok($tx->error,    "upload_documents2 error check");
 
 $tx = $azs->merge_documents(@test_documents1);
 ok($tx->success, "merge_documents1 sucess check");
-is($tx->result->code,                          200, "merge_documents1 result code check");
-is($tx->result->json->{values}[0]{statusCode}, 200, "merge_documents1 value statusCode check");
+is($tx->result->code,                         200, "merge_documents1 result code check");
+is($tx->result->json->{value}[0]{statusCode}, 200, "merge_documents1 value statusCode check");
 
 $tx = $azs->merge_or_upload_documents(@test_documents1);
 ok($tx->success, "merge_or_upload_documents1 sucess check");
-is($tx->result->code,                          200, "merge_or_upload_documents1 result code check");
-is($tx->result->json->{values}[0]{statusCode}, 200, "merge_or_upload_documents1 value statusCode check");
+is($tx->result->code,                         200, "merge_or_upload_documents1 result code check");
+is($tx->result->json->{value}[0]{statusCode}, 201, "merge_or_upload_documents1 value statusCode check");
 
 $tx = $azs->delete_documents(@test_documents1);
 ok($tx->success, "delete_documents1 sucess check");
-is($tx->result->code,                          200, "delete_documents1 result code check");
-is($tx->result->json->{values}[0]{statusCode}, 200, "delete_documents1 value statusCode check");
+is($tx->result->code,                         200, "delete_documents1 result code check");
+is($tx->result->json->{value}[0]{statusCode}, 200, "delete_documents1 value statusCode check");
 
 done_testing();
 

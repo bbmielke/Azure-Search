@@ -22,6 +22,7 @@ sub _init {
         $self->{'service_url'} = $args{'service_url'};
     }
     elsif (defined $args{'service_name'}) {
+        carp "service_name argument appears to be a url" if ($args{service_name} =~ /^https?:/i);
         $self->{'service_url'} = "https://$args{service_name}.search.windows.net";
     }
     else {
@@ -153,7 +154,7 @@ Merge documents onto the index.  This fails if the document does not already exi
 in the index, and it merges the hash keys.
 
 Merge documents can return a success on $tx->success, while still having errors on individual documents.
-You should loop through each document to see each documents status.  See the EXAMPLE below.
+You should loop through each document to see each documents status.  See the EXAMPLE below (or review search_online.t for example)
 
 For more information on upload, merge_or_upload, or delete look at:
 
