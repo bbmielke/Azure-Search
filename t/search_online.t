@@ -109,15 +109,13 @@ is($results->{'@odata.count'}, 0, "search_documents1 count check");    # Count o
 ($error, $results) = $azs->search_documents('search' => '*', 'invalid_argument' => 'invalid',);
 ok($error, "search_documents2 error check");
 
-$tx = $azs->upload_documents(@test_documents1);
-ok($tx->success, "upload_documents1 success check");
-ok(!$tx->error,  "upload_documents1 error check");
-is($tx->result->code,                         200, "upload_documents1 result code check");
-is($tx->result->json->{value}[0]{statusCode}, 201, "upload_documents1 value statusCode check");
+($error, $results) = $azs->upload_documents(@test_documents1);
+ok(!$error,  "upload_documents1 error check");
+is($results->{value}[0]{statusCode}, 201, "upload_documents1 value statusCode check");
 sleep 1;    ## It seems to take a little bit of time for uploads to be reflected in following query
 
-$tx = $azs->upload_documents(@test_documents1);
-is($tx->result->json->{value}[0]{statusCode}, 200, "upload_documents1.1 second upload statusCode change check");
+($error, $results) = $azs->upload_documents(@test_documents1);
+is($results->{value}[0]{statusCode}, 200, "upload_documents1.1 second upload statusCode change check");
 sleep 1;    ## It seems to take a little bit of time for uploads to be reflected in following query
 
 ($error, $results) = $azs->search_documents('search' => '*', 'count' => $JSON::PP::true,);
@@ -128,33 +126,30 @@ is($results->{'value'}[0]{'have_address'}, $JSON::PP::true,         "search_docu
 # The next check also checks utf8 issues between communication with the server and back
 is($results->{'value'}[0]{'name2'}, 'Brian Müller', "search_documents3 value check");
 
-$tx = $azs->upload_documents();    ## No documents should cause error
-ok(!$tx->success, "upload_documents2 success check");
-ok($tx->error,    "upload_documents2 error check");
+($error, $results) = $azs->upload_documents();    ## No documents should cause error
+ok($error,    "upload_documents2 error check");
 
-$tx = $azs->merge_documents(@test_documents1);
-ok($tx->success, "merge_documents1 sucess check");
-is($tx->result->code,                         200, "merge_documents1 result code check");
-is($tx->result->json->{value}[0]{statusCode}, 200, "merge_documents1 value statusCode check");
+($error, $results) = $azs->merge_documents(@test_documents1);
+ok(!$error, "merge_documents1 error check");
+is($results->{value}[0]{statusCode}, 200, "merge_documents1 value statusCode check");
 
-$tx = $azs->delete_documents(@test_documents1);
-ok($tx->success, "delete_documents1 success check");
+($error, $results) = $azs->delete_documents(@test_documents1);
+ok(!$error, "delete_documents1 error check");
 sleep 1;
 
 # Now merge documents should fail with a 207 and 404 error
-$tx = $azs->merge_documents(@test_documents1);
-is($tx->result->code,                         207, "merge_documents1 result code check");
-is($tx->result->json->{value}[0]{statusCode}, 404, "merge_documents1 value statusCode check");
+($error, $results) = $azs->merge_documents(@test_documents1);
+ok($error, "merge_documents1 error check");
+is($results->{value}[0]{statusCode}, 404, "merge_documents1 value statusCode check");
 sleep 1;
 
-$tx = $azs->merge_or_upload_documents(@test_documents1);
-ok($tx->success, "merge_or_upload_documents1 sucess check");
-is($tx->result->code,                         200, "merge_or_upload_documents1 result code check");
-is($tx->result->json->{value}[0]{statusCode}, 201, "merge_or_upload_documents1 value statusCode check");
+($error, $results) = $azs->merge_or_upload_documents(@test_documents1);
+ok(!$error, "merge_or_upload_documents1 error check");
+is($results->{value}[0]{statusCode}, 201, "merge_or_upload_documents1 value statusCode check");
 sleep 1;
 
-$tx = $azs->delete_documents(@test_documents1);
-ok($tx->success, "delete_documents2 success check");
+($error, $results) = $azs->delete_documents(@test_documents1);
+ok(!$error, "delete_documents2 error check");
 sleep 1;
 
 $tx = $azs->delete_index();

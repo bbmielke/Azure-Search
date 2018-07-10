@@ -87,7 +87,20 @@ sub _cud_documents {
         $document->{'@search.action'} = $action;
     }
     my $url = "$self->{service_url}/indexes/$self->{index}/docs/index?api-version=$self->{api_version}";
-    return $self->{user_agent}->post($url => {'api-key' => $self->{api_key}} => json => {value => \@documents});
+    my $tx = $self->{user_agent}->post($url => {'api-key' => $self->{api_key}} => json => {value => \@documents});
+
+    if (!$tx->success) {
+        my $code    = $tx->error->{code};
+        my $message = $tx->error->{message};
+        my $body    = $tx->result->body;
+        return ("$code: $message: $body", $tx->result->json);
+    }
+    elsif ($tx->result->code != 200) {
+        return ("Unexpected status code: " . $tx->result->code, $tx->result->json);
+    }
+    else {
+        return (undef, $tx->result->json);
+    }
 }
 
 sub create_index {
@@ -177,7 +190,7 @@ This will run a query on your $azs object to query your search index with %args 
 along to the rest api.
 
 This method returns an error string (or undef) and a hash representing the json response
-returned by Azure::Search.  You should check for the error string after each call.
+returned by Azure.  You should check for the error string after each call.
 
 I will provide some examples below, but for a full list of
 options please go to:
@@ -189,6 +202,12 @@ L<https://docs.microsoft.com/en-us/rest/api/searchservice/search-documents>
 Upload an array of hash ref documents to the index.  This replaces the document
 if it already exists in the index.
 
+This method returns an error string (or undef) and a hash representing the json response
+returned by Azure.  You should check for the error string after each call.
+
+Please note that each individual document gets a status code too that can be checked,
+but it's mostly unnecessary to check it unless calling merge_documents.
+
 For more information on upload, merge_or_upload, or delete look at:
 
 L<https://docs.microsoft.com/en-us/rest/api/searchservice/addupdate-or-delete-documents>
@@ -198,8 +217,13 @@ L<https://docs.microsoft.com/en-us/rest/api/searchservice/addupdate-or-delete-do
 Merge documents onto the index.  This fails if the document does not already exist
 in the index, and it merges the hash keys.
 
-Merge documents can return a success on $tx->success, while still having errors on individual documents.
-You should loop through each document to see each documents status.  See the EXAMPLE below (or review search_online.t for example)
+This method returns an error string (or undef) and a hash representing the json response
+returned by Azure.  You should check for the error string after each call.
+
+In addition to checking the error on the call, merge returns a status for each
+document merged.  This is since individual documents may not exist and hence
+cant be merged.  You may want to check the status for each documents errors.
+Please look at the example below or review search_online.t for an example.
 
 For more information on upload, merge_or_upload, or delete look at:
 
@@ -212,6 +236,12 @@ This method is more forgiving than merge in the situation where a document does 
 the index yet, so you do not have to loop through the status of each individual document
 being merge_or_uploaded.
 
+This method returns an error string (or undef) and a hash representing the json response
+returned by Azure.  You should check for the error string after each call.
+
+Please note that each individual document gets a status code too that can be checked,
+but it's mostly unnecessary to check it unless calling merge_documents.
+
 For more information on upload, merge_or_upload, or delete look at:
 
 L<https://docs.microsoft.com/en-us/rest/api/searchservice/addupdate-or-delete-documents>
@@ -221,6 +251,9 @@ L<https://docs.microsoft.com/en-us/rest/api/searchservice/addupdate-or-delete-do
 Delete documents from the index -- not individual fields. The microsoft documentation states
 to delete a field use merge instead, and submit the document with a null (undef in perl)
 value for the field you wish to delete.
+
+This method returns an error string (or undef) and a hash representing the json response
+returned by Azure.  You should check for the error string after each call.
 
 For more information on upload, merge_or_upload, or delete look at:
 
@@ -291,7 +324,7 @@ Return details on all indexes.
 
     Upload documents to the search index.
 
-    my $tx = $azs->upload_documents(
+    my ($error, $results) = $azs->upload_documents(
         {
             name => 'Brian1',
             date => DateTime->now->iso8601 . 'Z',
@@ -304,29 +337,21 @@ Return details on all indexes.
         },
     );
 
-    Review $tx for upload_documents errors:
-
-    if (!$tx->success) {
-        my $code = $tx->error->{code};
-        my $message = $tx->error->{message};
-        my $body = $tx->result->body;
-        warn "Azure Search Call returned: $code: $message: $body";
+    if ($error) {
+        warn "Error upload_documents: $error";
     }
 
     #Modify existing documents with new hash entries:
 
-    my $tx = $azs->merge_documents({'name' => 'does not exist yet', have_address=>\0}, {'name' => 'Brian', have_address => \0});
+    my($error, $results) = $azs->merge_documents({'name' => 'does not exist yet', have_address=>\0}, {'name' => 'Brian', have_address => \0});
 
-    # Review $tx for merge_documents errors:
+    # Review errors:
 
-    if (!$tx->success) {
-        my $code = $tx->error->{code};
-        my $message = $tx->error->{message};
-        my $body = $tx->result->body;
-        warn "Azure Search Call returned: $code: $message: $body";
+    if ($error) {
+        warn "Error merge_documents: $error";
     }
     else {
-        for my $document (@{$tx->result->json->{value}}) {
+        for my $document (@{$results}) {
             if($document->{'statusCode'} != 200) {
                 warn "Document uploaded with unexpected statusCode - $document->{'key'}: $document->{statusCode}: $document->{errorMessage}";
             }
@@ -335,7 +360,7 @@ Return details on all indexes.
 
     Upload documents without overwriting all old hash entries with merge_or_upload:
 
-    my $tx = $azs->merge_or_upload_documents({'name' => 'does not exist yet', have_address=>\0}, {'name' => 'Brian', have_address => \0});
+    my($error,$results) = $azs->merge_or_upload_documents({'name' => 'does not exist yet', have_address=>\0}, {'name' => 'Brian', have_address => \0});
 
     This method is more forgiving than merge_documents, so you do not have to loop through each individual document to check the status, but you can if you wish.
 

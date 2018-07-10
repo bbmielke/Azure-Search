@@ -14,15 +14,6 @@ my $test_api_key     = 'testing123';
 
 my @test_documents1 = ({'name' => 'Brian', have_address => $JSON::PP::true});
 
-##
-## This is a challenge to test effectively in a unit test setup since
-## all the code really does is configures a few paths/arguments
-## and passes them along to Mojo::UserAgent to call Azure's rest api.
-## So let's setup a mockup mojolicious server to test against for a few
-## tests with actual data extracted from querying the real windows
-## azure rest api.
-##
-
 my $mock = Mojolicious::Lite->new;
 
 $mock->routes->post(
@@ -162,30 +153,24 @@ is($results->{'value'}[0]{'boolean'}, $JSON::PP::true, "search_documents1 value 
 ($error, $results) = $azs->search_documents('search' => '*', 'invalid_argument' => 'invalid',);
 ok($error, "search_documents2 returned an error");
 
-$tx = $azs->upload_documents(@test_documents1);
-ok($tx->success, "upload_documents1 success check");
-ok(!$tx->error,  "upload_documents1 error check");
-is($tx->result->code,                         200, "upload_documents1 result code check");
-is($tx->result->json->{value}[0]{statusCode}, 201, "upload_documents1 value statusCode check");
+($error, $results) = $azs->upload_documents(@test_documents1);
+ok(!$error,  "upload_documents1 error check");
+is($results->{value}[0]{statusCode}, 201, "upload_documents1 value statusCode check");
 
-$tx = $azs->upload_documents();
-ok(!$tx->success, "upload_documents2 success check");
-ok($tx->error,    "upload_documents2 error check");
+($error, $results) = $azs->upload_documents();
+ok($error,    "upload_documents2 error check");
 
-$tx = $azs->merge_documents(@test_documents1);
-ok($tx->success, "merge_documents1 sucess check");
-is($tx->result->code,                         200, "merge_documents1 result code check");
-is($tx->result->json->{value}[0]{statusCode}, 200, "merge_documents1 value statusCode check");
+($error, $results) = $azs->merge_documents(@test_documents1);
+ok(!$error, "merge_documents1 error check");
+is($results->{value}[0]{statusCode}, 200, "merge_documents1 value statusCode check");
 
-$tx = $azs->merge_or_upload_documents(@test_documents1);
-ok($tx->success, "merge_or_upload_documents1 sucess check");
-is($tx->result->code,                         200, "merge_or_upload_documents1 result code check");
-is($tx->result->json->{value}[0]{statusCode}, 201, "merge_or_upload_documents1 value statusCode check");
+($error, $results) = $azs->merge_or_upload_documents(@test_documents1);
+ok(!$error, "merge_or_upload_documents1 error check");
+is($results->{value}[0]{statusCode}, 201, "merge_or_upload_documents1 value statusCode check");
 
-$tx = $azs->delete_documents(@test_documents1);
-ok($tx->success, "delete_documents1 sucess check");
-is($tx->result->code,                         200, "delete_documents1 result code check");
-is($tx->result->json->{value}[0]{statusCode}, 200, "delete_documents1 value statusCode check");
+($error, $results) = $azs->delete_documents(@test_documents1);
+ok(!$error, "delete_documents1 error check");
+is($results->{value}[0]{statusCode}, 200, "delete_documents1 value statusCode check");
 
 done_testing();
 
