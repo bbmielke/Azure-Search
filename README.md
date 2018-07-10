@@ -4,7 +4,7 @@ Azure::Search
 
 # VERSION
 
-version 0.01
+version 0.02
 
 # SYNOPSIS
 
@@ -52,7 +52,12 @@ Leverage [Mojo::UserAgent](https://metacpan.org/pod/Mojo::UserAgent) to interact
 - search\_documents(%args)
 
     This will run a query on your $azs object to query your search index with %args passed
-    along to the rest api.  I will provide some examples below, but for a full list of
+    along to the rest api.
+
+    This method returns an error string (or undef) and a hash representing the json response
+    returned by Azure::Search.  You should check for the error string after each call.
+
+    I will provide some examples below, but for a full list of
     options please go to:
 
     [https://docs.microsoft.com/en-us/rest/api/searchservice/search-documents](https://docs.microsoft.com/en-us/rest/api/searchservice/search-documents)
@@ -136,23 +141,18 @@ Azure::Search - Perl interacting with Azure Search's REST API.
 
     Search for anything and grab the first value and a count of matches.
 
-    my $tx = $azs->search_documents(
+    my ($error,$result) = $azs->search_documents(
         search      => '*',
         count       => \1,
         top         => 1,
     );
 
-    Review $tx for search_documents errors:
-
-    if (!$tx->success) {
-        my $code = $tx->error->{code};
-        my $message = $tx->error->{message};
-        my $body = $tx->result->body;
-        carp "Azure Search Call returned: $code: $message: $body";
+    if ($error) {
+        warn "Error searching_documents: $error";
     }
     else {
-        say "NUMBER OF RESULTS: " . $tx->result->json->{'@odata.count'};
-        say "DUMP OF RESULTS: " . Dumper($tx->result->json);
+        say "NUMBER OF RESULTS: " . $results->{'@odata.count'};
+        say "DUMP OF RESULTS: " . Dumper($results);
     }
 
     Search the index by the name field, where the name is not Brian.
@@ -160,7 +160,7 @@ Azure::Search - Perl interacting with Azure Search's REST API.
     and a date lt 2018-06-26. Please note boolean and date fields
     can not be searched directly, but they can be filtered.
 
-    my $tx = $azs->search_documents(
+    my($error, $results) = $azs->search_documents(
         search    => '-name:Brian',
         top       => 100,
         queryType => 'full',
@@ -190,7 +190,7 @@ Azure::Search - Perl interacting with Azure Search's REST API.
         my $code = $tx->error->{code};
         my $message = $tx->error->{message};
         my $body = $tx->result->body;
-        carp "Azure Search Call returned: $code: $message: $body";
+        warn "Azure Search Call returned: $code: $message: $body";
     }
 
     #Modify existing documents with new hash entries:
@@ -203,12 +203,12 @@ Azure::Search - Perl interacting with Azure Search's REST API.
         my $code = $tx->error->{code};
         my $message = $tx->error->{message};
         my $body = $tx->result->body;
-        carp "Azure Search Call returned: $code: $message: $body";
+        warn "Azure Search Call returned: $code: $message: $body";
     }
     else {
         for my $document (@{$tx->result->json->{value}}) {
             if($document->{'statusCode'} != 200) {
-                carp "Document uploaded with unexpected statusCode - $document->{'key'}: $document->{statusCode}: $document->{errorMessage}";
+                warn "Document uploaded with unexpected statusCode - $document->{'key'}: $document->{statusCode}: $document->{errorMessage}";
             }
         }
     }

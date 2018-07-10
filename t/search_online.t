@@ -69,13 +69,17 @@ my @test_fields = (
 ok($test_service_name, "Extracted test_service_name from config");
 ok($test_api_key,      "Extracted test_api_key from config");
 
+my $error;
+my $tx;
+my $results;
+
 my @test_documents1 = ({'name' => 'Brian', have_address => $JSON::PP::true, name2 => 'Brian Müller'});
 
 my $azs = Azure::Search->new(service_name => $test_service_name, index => $test_index, api_version => $test_api_version, api_key => $test_api_key,);
 
 is(ref $azs, 'Azure::Search', "Created Azure::Search object");
 
-my $tx = $azs->create_index(@test_fields);
+$tx = $azs->create_index(@test_fields);
 
 ok($tx->success, "create_index1 success check");
 ok(!$tx->error,  "create_index1 error check");
@@ -98,16 +102,12 @@ ok($tx->success, "get_indexes1 success check");
 is($tx->result->code, 200, "get_indexes1 status code");
 ok($tx->result->json->{value}[0]{name}, "get_indexes1 name is there check");
 
-$tx = $azs->search_documents('search' => '*', 'count' => $JSON::PP::true,);
-ok($tx->success, "search_documents1 success check");
-ok(!$tx->error,  "search_documents1 error check");
-is($tx->result->code,                   200, "search_documents1 result code check");
-is($tx->result->json->{'@odata.count'}, 0,   "search_documents1 count check");         # Count other than 0 means index probably already existed
+($error, $results) = $azs->search_documents('search' => '*', 'count' => $JSON::PP::true,);
+ok(!$error, "search_documents1 error check");
+is($results->{'@odata.count'}, 0, "search_documents1 count check");    # Count other than 0 means index probably already existed
 
-$tx = $azs->search_documents('search' => '*', 'invalid_argument' => 'invalid',);
-ok(!$tx->success, "search_documents2 success check");
-ok($tx->error,    "search_documents2 error check");
-is($tx->result->code, 400, "search_documents2 result code check");
+($error, $results) = $azs->search_documents('search' => '*', 'invalid_argument' => 'invalid',);
+ok($error, "search_documents2 error check");
 
 $tx = $azs->upload_documents(@test_documents1);
 ok($tx->success, "upload_documents1 success check");
@@ -120,12 +120,13 @@ $tx = $azs->upload_documents(@test_documents1);
 is($tx->result->json->{value}[0]{statusCode}, 200, "upload_documents1.1 second upload statusCode change check");
 sleep 1;    ## It seems to take a little bit of time for uploads to be reflected in following query
 
-$tx = $azs->search_documents('search' => '*', 'count' => $JSON::PP::true,);
-ok($tx->success, "search_documents3 success check");
-is($tx->result->json->{'@odata.count'},             scalar @test_documents1, "search_documents3 count check");
-is($tx->result->json->{'value'}[0]{'have_address'}, $JSON::PP::true,         "search_documents3 value check");
+($error, $results) = $azs->search_documents('search' => '*', 'count' => $JSON::PP::true,);
+ok(!$error, "search_documents3 success check");
+is($results->{'@odata.count'},             scalar @test_documents1, "search_documents3 count check");
+is($results->{'value'}[0]{'have_address'}, $JSON::PP::true,         "search_documents3 value check");
+
 # The next check also checks utf8 issues between communication with the server and back
-is($tx->result->json->{'value'}[0]{'name2'},        'Brian Müller',         "search_documents3 value check");
+is($results->{'value'}[0]{'name2'}, 'Brian Müller', "search_documents3 value check");
 
 $tx = $azs->upload_documents();    ## No documents should cause error
 ok(!$tx->success, "upload_documents2 success check");

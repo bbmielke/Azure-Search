@@ -1,11 +1,9 @@
 package Azure::Search;
 
-use strict;
-use warnings;
+use Mojo::Base -strict;
 use Mojo::UserAgent;
-use Carp;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 sub new {
     my ($class, %args) = @_;
@@ -22,16 +20,16 @@ sub _init {
         $self->{'service_url'} = $args{'service_url'};
     }
     elsif (defined $args{'service_name'}) {
-        carp "service_name argument appears to be a url" if ($args{service_name} =~ /^https?:/i);
+        die "service_name argument appears to be a url" if ($args{service_name} =~ /^https?:/i);
         $self->{'service_url'} = "https://$args{service_name}.search.windows.net";
     }
     else {
-        carp "Either service_name or service_url are required with Azure::Search";
+        die "Either service_name or service_url are required with Azure::Search";
     }
 
     my @required_args = qw(index api_version api_key);
     for my $arg (@required_args) {
-        $self->{$arg} = $args{$arg} // carp "$arg is required with Azure::Search";
+        $self->{$arg} = $args{$arg} // die "$arg is required with Azure::Search";
     }
 
     if ($args{user_agent}) {
@@ -45,7 +43,19 @@ sub _init {
 sub search_documents {
     my ($self, %args) = @_;
     my $url = "$self->{service_url}/indexes/$self->{index}/docs/search?api-version=$self->{api_version}";
-    return $self->{user_agent}->post($url => {'api-key' => $self->{api_key}} => json => \%args);
+    my $tx = $self->{user_agent}->post($url => {'api-key' => $self->{api_key}} => json => \%args);
+    if (!$tx->success) {
+        my $code    = $tx->error->{code};
+        my $message = $tx->error->{message};
+        my $body    = $tx->result->body;
+        return ("$code: $message: $body", $tx->result->json);
+    }
+    elsif ($tx->result->code != 200) {
+        return ("Unexpected status code: " . $tx->result->code, $tx->result->json);
+    }
+    else {
+        return (undef, $tx->result->json);
+    }
 }
 
 sub upload_documents {
@@ -164,7 +174,12 @@ user_agent - your own Mojo::UserAgent object (useful for mockups/testing)
 =item search_documents(%args)
 
 This will run a query on your $azs object to query your search index with %args passed
-along to the rest api.  I will provide some examples below, but for a full list of
+along to the rest api.
+
+This method returns an error string (or undef) and a hash representing the json response
+returned by Azure::Search.  You should check for the error string after each call.
+
+I will provide some examples below, but for a full list of
 options please go to:
 
 L<https://docs.microsoft.com/en-us/rest/api/searchservice/search-documents>
@@ -246,23 +261,18 @@ Return details on all indexes.
 
     Search for anything and grab the first value and a count of matches.
 
-    my $tx = $azs->search_documents(
+    my ($error,$result) = $azs->search_documents(
         search      => '*',
         count       => \1,
         top         => 1,
     );
 
-    Review $tx for search_documents errors:
-
-    if (!$tx->success) {
-        my $code = $tx->error->{code};
-        my $message = $tx->error->{message};
-        my $body = $tx->result->body;
-        carp "Azure Search Call returned: $code: $message: $body";
+    if ($error) {
+        warn "Error searching_documents: $error";
     }
     else {
-        say "NUMBER OF RESULTS: " . $tx->result->json->{'@odata.count'};
-        say "DUMP OF RESULTS: " . Dumper($tx->result->json);
+        say "NUMBER OF RESULTS: " . $results->{'@odata.count'};
+        say "DUMP OF RESULTS: " . Dumper($results);
     }
 
     Search the index by the name field, where the name is not Brian.
@@ -270,7 +280,7 @@ Return details on all indexes.
     and a date lt 2018-06-26. Please note boolean and date fields
     can not be searched directly, but they can be filtered.
 
-    my $tx = $azs->search_documents(
+    my($error, $results) = $azs->search_documents(
         search    => '-name:Brian',
         top       => 100,
         queryType => 'full',
@@ -300,7 +310,7 @@ Return details on all indexes.
         my $code = $tx->error->{code};
         my $message = $tx->error->{message};
         my $body = $tx->result->body;
-        carp "Azure Search Call returned: $code: $message: $body";
+        warn "Azure Search Call returned: $code: $message: $body";
     }
 
     #Modify existing documents with new hash entries:
@@ -313,12 +323,12 @@ Return details on all indexes.
         my $code = $tx->error->{code};
         my $message = $tx->error->{message};
         my $body = $tx->result->body;
-        carp "Azure Search Call returned: $code: $message: $body";
+        warn "Azure Search Call returned: $code: $message: $body";
     }
     else {
         for my $document (@{$tx->result->json->{value}}) {
             if($document->{'statusCode'} != 200) {
-                carp "Document uploaded with unexpected statusCode - $document->{'key'}: $document->{statusCode}: $document->{errorMessage}";
+                warn "Document uploaded with unexpected statusCode - $document->{'key'}: $document->{statusCode}: $document->{errorMessage}";
             }
         }
     }

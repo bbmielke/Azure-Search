@@ -16,7 +16,7 @@ my %WriteMakefileArgs = (
   "LICENSE" => "perl",
   "NAME" => "Azure::Search",
   "PREREQ_PM" => {
-    "Carp" => 0,
+    "Mojo::Base" => 0,
     "Mojo::UserAgent" => 0
   },
   "TEST_REQUIRES" => {
@@ -26,7 +26,7 @@ my %WriteMakefileArgs = (
     "IPC::Open3" => 0,
     "Test::More" => 0
   },
-  "VERSION" => "0.01",
+  "VERSION" => "0.02",
   "test" => {
     "TESTS" => "t/*.t"
   }
@@ -34,11 +34,11 @@ my %WriteMakefileArgs = (
 
 
 my %FallbackPrereqs = (
-  "Carp" => 0,
   "ExtUtils::MakeMaker" => 0,
   "File::Spec" => 0,
   "IO::Handle" => 0,
   "IPC::Open3" => 0,
+  "Mojo::Base" => 0,
   "Mojo::UserAgent" => 0,
   "Test::More" => 0
 );

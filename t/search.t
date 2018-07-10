@@ -136,6 +136,8 @@ my $azs = Azure::Search->new(
 is(ref $azs, 'Azure::Search', "Created Azure::Search object");
 
 my $tx;
+my $error;
+my $results;
 
 $tx = $azs->create_index({'key' => $JSON::PP::true, 'name' => 'name', 'type' => 'Edm.String'});
 is($tx->result->code, 201, 'create_index1 mocked test');
@@ -152,17 +154,13 @@ is($tx->result->code, 200, 'get_indexes1 mocked test');
 $tx = $azs->delete_index({'key' => $JSON::PP::true, 'name' => 'name', 'type' => 'Edm.String'});
 is($tx->result->code, 204, 'delete_index mocked test');
 
-$tx = $azs->search_documents('search' => '*', 'count' => $JSON::PP::true,);
-ok($tx->success, "search_documents1 success check");
-ok(!$tx->error,  "search_documents1 error check");
-is($tx->result->code,                          200,             "search_documents1 result code check");
-is($tx->result->json->{'@odata.count'},        1,               "search_documents1 count check");
-is($tx->result->json->{'value'}[0]{'boolean'}, $JSON::PP::true, "search_documents1 value check");
+($error, $results) = $azs->search_documents('search' => '*', 'count' => $JSON::PP::true,);
+ok(!$error, "search_documents1 error check");
+is($results->{'@odata.count'}, 1, "search_documents1 count check");
+is($results->{'value'}[0]{'boolean'}, $JSON::PP::true, "search_documents1 value check");
 
-$tx = $azs->search_documents('search' => '*', 'invalid_argument' => 'invalid',);
-ok(!$tx->success, "search_documents2 success check");
-ok($tx->error,    "search_documents2 error check");
-is($tx->result->code, 400, "search_documents2 result code check");
+($error, $results) = $azs->search_documents('search' => '*', 'invalid_argument' => 'invalid',);
+ok($error, "search_documents2 returned an error");
 
 $tx = $azs->upload_documents(@test_documents1);
 ok($tx->success, "upload_documents1 success check");
