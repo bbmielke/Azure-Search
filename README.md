@@ -55,7 +55,7 @@ Leverage [Mojo::UserAgent](https://metacpan.org/pod/Mojo::UserAgent) to interact
     along to the rest api.
 
     This method returns an error string (or undef) and a hash representing the json response
-    returned by Azure::Search.  You should check for the error string after each call.
+    returned by Azure.  You should check for the error string after each call.
 
     I will provide some examples below, but for a full list of
     options please go to:
@@ -67,6 +67,12 @@ Leverage [Mojo::UserAgent](https://metacpan.org/pod/Mojo::UserAgent) to interact
     Upload an array of hash ref documents to the index.  This replaces the document
     if it already exists in the index.
 
+    This method returns an error string (or undef) and a hash representing the json response
+    returned by Azure.  You should check for the error string after each call.
+
+    Please note that each individual document gets a status code too that can be checked,
+    but it's mostly unnecessary to check it unless calling merge\_documents.
+
     For more information on upload, merge\_or\_upload, or delete look at:
 
     [https://docs.microsoft.com/en-us/rest/api/searchservice/addupdate-or-delete-documents](https://docs.microsoft.com/en-us/rest/api/searchservice/addupdate-or-delete-documents)
@@ -76,8 +82,13 @@ Leverage [Mojo::UserAgent](https://metacpan.org/pod/Mojo::UserAgent) to interact
     Merge documents onto the index.  This fails if the document does not already exist
     in the index, and it merges the hash keys.
 
-    Merge documents can return a success on $tx->success, while still having errors on individual documents.
-    You should loop through each document to see each documents status.  See the EXAMPLE below (or review search\_online.t for example)
+    This method returns an error string (or undef) and a hash representing the json response
+    returned by Azure.  You should check for the error string after each call.
+
+    In addition to checking the error on the call, merge returns a status for each
+    document merged.  This is since individual documents may not exist and hence
+    cant be merged.  You may want to check the status for each documents errors.
+    Please look at the example below or review search\_online.t for an example.
 
     For more information on upload, merge\_or\_upload, or delete look at:
 
@@ -90,6 +101,12 @@ Leverage [Mojo::UserAgent](https://metacpan.org/pod/Mojo::UserAgent) to interact
     the index yet, so you do not have to loop through the status of each individual document
     being merge\_or\_uploaded.
 
+    This method returns an error string (or undef) and a hash representing the json response
+    returned by Azure.  You should check for the error string after each call.
+
+    Please note that each individual document gets a status code too that can be checked,
+    but it's mostly unnecessary to check it unless calling merge\_documents.
+
     For more information on upload, merge\_or\_upload, or delete look at:
 
     [https://docs.microsoft.com/en-us/rest/api/searchservice/addupdate-or-delete-documents](https://docs.microsoft.com/en-us/rest/api/searchservice/addupdate-or-delete-documents)
@@ -100,6 +117,9 @@ Leverage [Mojo::UserAgent](https://metacpan.org/pod/Mojo::UserAgent) to interact
     to delete a field use merge instead, and submit the document with a null (undef in perl)
     value for the field you wish to delete.
 
+    This method returns an error string (or undef) and a hash representing the json response
+    returned by Azure.  You should check for the error string after each call.
+
     For more information on upload, merge\_or\_upload, or delete look at:
 
     [https://docs.microsoft.com/en-us/rest/api/searchservice/addupdate-or-delete-documents](https://docs.microsoft.com/en-us/rest/api/searchservice/addupdate-or-delete-documents)
@@ -108,6 +128,9 @@ Leverage [Mojo::UserAgent](https://metacpan.org/pod/Mojo::UserAgent) to interact
 
     Create an index for @fields.  There are a lot of field options.  Please look at the microsoft site
     for complete details.  I'll have an example of one below.
+
+    This method returns an error string (or undef) and a hash representing the json response
+    returned by Azure.  You should check for the error string after each call.
 
     [https://docs.microsoft.com/en-us/rest/api/searchservice/create-index](https://docs.microsoft.com/en-us/rest/api/searchservice/create-index)
 
@@ -119,19 +142,31 @@ Leverage [Mojo::UserAgent](https://metacpan.org/pod/Mojo::UserAgent) to interact
     change fields from searchable => false to true, but it does allow you to add new fields to the
     index.
 
+    This method returns an error string (or undef) and a hash representing the json response
+    returned by Azure.  You should check for the error string after each call.
+
     [https://docs.microsoft.com/en-us/rest/api/searchservice/update-index](https://docs.microsoft.com/en-us/rest/api/searchservice/update-index)
 
 - delete\_index
 
     Delete the index.
 
+    This method returns an error string (or undef) and a hash representing the json response
+    returned by Azure.  You should check for the error string after each call.
+
 - get\_index
 
     Return details on the index.
 
+    This method returns an error string (or undef) and a hash representing the json response
+    returned by Azure.  You should check for the error string after each call.
+
 - get\_indexes
 
     Return details on all indexes.
+
+    This method returns an error string (or undef) and a hash representing the json response
+    returned by Azure.  You should check for the error string after each call.
 
 # NAME
 
@@ -148,7 +183,7 @@ Azure::Search - Perl interacting with Azure Search's REST API.
     );
 
     if ($error) {
-        warn "Error searching_documents: $error";
+        die "Error searching_documents: $error";
     }
     else {
         say "NUMBER OF RESULTS: " . $results->{'@odata.count'};
@@ -171,7 +206,7 @@ Azure::Search - Perl interacting with Azure Search's REST API.
 
     Upload documents to the search index.
 
-    my $tx = $azs->upload_documents(
+    my ($error, $results) = $azs->upload_documents(
         {
             name => 'Brian1',
             date => DateTime->now->iso8601 . 'Z',
@@ -184,29 +219,21 @@ Azure::Search - Perl interacting with Azure Search's REST API.
         },
     );
 
-    Review $tx for upload_documents errors:
-
-    if (!$tx->success) {
-        my $code = $tx->error->{code};
-        my $message = $tx->error->{message};
-        my $body = $tx->result->body;
-        warn "Azure Search Call returned: $code: $message: $body";
+    if ($error) {
+        die "Error upload_documents: $error";
     }
 
     #Modify existing documents with new hash entries:
 
-    my $tx = $azs->merge_documents({'name' => 'does not exist yet', have_address=>\0}, {'name' => 'Brian', have_address => \0});
+    my($error, $results) = $azs->merge_documents({'name' => 'does not exist yet', have_address=>\0}, {'name' => 'Brian', have_address => \0});
 
-    # Review $tx for merge_documents errors:
+    # Review errors:
 
-    if (!$tx->success) {
-        my $code = $tx->error->{code};
-        my $message = $tx->error->{message};
-        my $body = $tx->result->body;
-        warn "Azure Search Call returned: $code: $message: $body";
+    if ($error) {
+        die "Error merge_documents: $error";
     }
     else {
-        for my $document (@{$tx->result->json->{value}}) {
+        for my $document (@{$results}) {
             if($document->{'statusCode'} != 200) {
                 warn "Document uploaded with unexpected statusCode - $document->{'key'}: $document->{statusCode}: $document->{errorMessage}";
             }
@@ -215,13 +242,13 @@ Azure::Search - Perl interacting with Azure Search's REST API.
 
     Upload documents without overwriting all old hash entries with merge_or_upload:
 
-    my $tx = $azs->merge_or_upload_documents({'name' => 'does not exist yet', have_address=>\0}, {'name' => 'Brian', have_address => \0});
+    my($error,$results) = $azs->merge_or_upload_documents({'name' => 'does not exist yet', have_address=>\0}, {'name' => 'Brian', have_address => \0});
 
     This method is more forgiving than merge_documents, so you do not have to loop through each individual document to check the status, but you can if you wish.
 
     Create an index with a variety (but not a complete slice) of the available options:
 
-    my $tx = $azs->create_index(
+    my ($error, $result) = $azs->create_index(
         {
             name => 'name',
             type => 'Edm.String',

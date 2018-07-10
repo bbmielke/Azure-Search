@@ -70,7 +70,6 @@ ok($test_service_name, "Extracted test_service_name from config");
 ok($test_api_key,      "Extracted test_api_key from config");
 
 my $error;
-my $tx;
 my $results;
 
 my @test_documents1 = ({'name' => 'Brian', have_address => $JSON::PP::true, name2 => 'Brian Müller'});
@@ -79,28 +78,25 @@ my $azs = Azure::Search->new(service_name => $test_service_name, index => $test_
 
 is(ref $azs, 'Azure::Search', "Created Azure::Search object");
 
-$tx = $azs->create_index(@test_fields);
-
-ok($tx->success, "create_index1 success check");
-ok(!$tx->error,  "create_index1 error check");
-is($tx->result->code, 201, "create_index1 status code");
+($error, $results) = $azs->create_index(@test_fields);
+ok(!$error,  "create_index1 error check");
 sleep 1;
 
-$tx = $azs->update_index(@test_fields);
-ok($tx->success, "update_index1 success check");
-ok(!$tx->error,  "update_index1 error check");
-is($tx->result->code, 204, "update_index1 status code");
+($error, $results) = $azs->create_index(@test_fields);
+ok($error,  "create_index2 error check");
 sleep 1;
 
-$tx = $azs->get_index();
-ok($tx->success, "get_index1 success check");
-is($tx->result->code,         200,         "get_index1 status code");
-is($tx->result->json->{name}, $test_index, "get_index1 name check");
+($error, $results) = $azs->update_index(@test_fields);
+ok(!$error,  "update_index1 error check");
+sleep 1;
 
-$tx = $azs->get_indexes();
-ok($tx->success, "get_indexes1 success check");
-is($tx->result->code, 200, "get_indexes1 status code");
-ok($tx->result->json->{value}[0]{name}, "get_indexes1 name is there check");
+($error, $results) = $azs->get_index();
+ok(!$error, "get_index1 error check");
+is($results->{name}, $test_index, "get_index1 name check");
+
+($error, $results) = $azs->get_indexes();
+ok(!$error, "get_indexes1 error check");
+ok($results->{value}[0]{name}, "get_indexes1 name is there check");
 
 ($error, $results) = $azs->search_documents('search' => '*', 'count' => $JSON::PP::true,);
 ok(!$error, "search_documents1 error check");
@@ -152,9 +148,8 @@ sleep 1;
 ok(!$error, "delete_documents2 error check");
 sleep 1;
 
-$tx = $azs->delete_index();
-ok($tx->success, "delete_index1 success check");
-is($tx->result->code, 204, "delete_index1 status code");
+($error, $results) = $azs->delete_index();
+ok(!$error, "delete_index1 error check");
 
 done_testing();
 

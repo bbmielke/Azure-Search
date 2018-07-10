@@ -126,24 +126,23 @@ my $azs = Azure::Search->new(
 
 is(ref $azs, 'Azure::Search', "Created Azure::Search object");
 
-my $tx;
 my $error;
 my $results;
 
-$tx = $azs->create_index({'key' => $JSON::PP::true, 'name' => 'name', 'type' => 'Edm.String'});
-is($tx->result->code, 201, 'create_index1 mocked test');
+($error, $results) = $azs->create_index({'key' => $JSON::PP::true, 'name' => 'name', 'type' => 'Edm.String'});
+ok(!$error, 'create_index1 mocked test');
 
-$tx = $azs->update_index({'key' => $JSON::PP::true, 'name' => 'name', 'type' => 'Edm.String'});
-is($tx->result->code, 204, 'update_index1 mocked test');
+($error, $results) = $azs->update_index({'key' => $JSON::PP::true, 'name' => 'name', 'type' => 'Edm.String'});
+ok(!$error, 'update_index1 mocked test');
 
-$tx = $azs->get_index({'key' => $JSON::PP::true, 'name' => 'name', 'type' => 'Edm.String'});
-is($tx->result->code, 200, 'get_index1 mocked test');
+($error, $results) = $azs->get_index({'key' => $JSON::PP::true, 'name' => 'name', 'type' => 'Edm.String'});
+ok(!$error, 'get_index1 mocked test');
 
-$tx = $azs->get_indexes({'key' => $JSON::PP::true, 'name' => 'name', 'type' => 'Edm.String'});
-is($tx->result->code, 200, 'get_indexes1 mocked test');
+($error, $results) = $azs->get_indexes({'key' => $JSON::PP::true, 'name' => 'name', 'type' => 'Edm.String'});
+ok(!$error, 'get_indexes1 mocked test');
 
-$tx = $azs->delete_index({'key' => $JSON::PP::true, 'name' => 'name', 'type' => 'Edm.String'});
-is($tx->result->code, 204, 'delete_index mocked test');
+($error, $results) = $azs->delete_index({'key' => $JSON::PP::true, 'name' => 'name', 'type' => 'Edm.String'});
+ok(!$error, 'delete_index mocked test');
 
 ($error, $results) = $azs->search_documents('search' => '*', 'count' => $JSON::PP::true,);
 ok(!$error, "search_documents1 error check");

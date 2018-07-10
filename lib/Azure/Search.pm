@@ -106,31 +106,96 @@ sub _cud_documents {
 sub create_index {
     my ($self, @fields) = @_;
     my $url = "$self->{service_url}/indexes?api-version=$self->{api_version}";
-    return $self->{user_agent}->post($url => {'api-key' => $self->{api_key}} => json => {name => $self->{index}, fields => \@fields});
+    my $tx = $self->{user_agent}->post($url => {'api-key' => $self->{api_key}} => json => {name => $self->{index}, fields => \@fields});
+
+    if (!$tx->success) {
+        my $code    = $tx->error->{code};
+        my $message = $tx->error->{message};
+        my $body    = $tx->result->body;
+        return ("$code: $message: $body", $tx->result->json);
+    }
+    elsif ($tx->result->code != 201) {
+        return ("Unexpected status code: " . $tx->result->code, $tx->result->json);
+    }
+    else {
+        return (undef, $tx->result->json);
+    }
 }
 
 sub update_index {
     my ($self, @fields) = @_;
     my $url = "$self->{service_url}/indexes/$self->{index}?api-version=$self->{api_version}";
-    return $self->{user_agent}->put($url => {'api-key' => $self->{api_key}} => json => {name => $self->{index}, fields => \@fields});
+    my $tx = $self->{user_agent}->put($url => {'api-key' => $self->{api_key}} => json => {name => $self->{index}, fields => \@fields});
+
+    if (!$tx->success) {
+        my $code    = $tx->error->{code};
+        my $message = $tx->error->{message};
+        my $body    = $tx->result->body;
+        return ("$code: $message: $body", $tx->result->json);
+    }
+    elsif ($tx->result->code != 204) {
+        return ("Unexpected status code: " . $tx->result->code, $tx->result->json);
+    }
+    else {
+        return (undef, $tx->result->json);
+    }
 }
 
 sub delete_index {
     my ($self) = @_;
     my $url = "$self->{service_url}/indexes/$self->{index}?api-version=$self->{api_version}";
-    return $self->{user_agent}->delete($url => {'api-key' => $self->{api_key}});
+    my $tx = $self->{user_agent}->delete($url => {'api-key' => $self->{api_key}});
+
+    if (!$tx->success) {
+        my $code    = $tx->error->{code};
+        my $message = $tx->error->{message};
+        my $body    = $tx->result->body;
+        return ("$code: $message: $body", $tx->result->json);
+    }
+    elsif ($tx->result->code != 204) {
+        return ("Unexpected status code: " . $tx->result->code, $tx->result->json);
+    }
+    else {
+        return (undef, $tx->result->json);
+    }
 }
 
 sub get_index {
     my ($self) = @_;
     my $url = "$self->{service_url}/indexes/$self->{index}?api-version=$self->{api_version}";
-    return $self->{user_agent}->get($url => {'api-key' => $self->{api_key}});
+    my $tx = $self->{user_agent}->get($url => {'api-key' => $self->{api_key}});
+
+    if (!$tx->success) {
+        my $code    = $tx->error->{code};
+        my $message = $tx->error->{message};
+        my $body    = $tx->result->body;
+        return ("$code: $message: $body", $tx->result->json);
+    }
+    elsif ($tx->result->code != 200) {
+        return ("Unexpected status code: " . $tx->result->code, $tx->result->json);
+    }
+    else {
+        return (undef, $tx->result->json);
+    }
 }
 
 sub get_indexes {
     my ($self) = @_;
     my $url = "$self->{service_url}/indexes?api-version=$self->{api_version}";
-    return $self->{user_agent}->get($url => {'api-key' => $self->{api_key}});
+    my $tx =  $self->{user_agent}->get($url => {'api-key' => $self->{api_key}});
+
+    if (!$tx->success) {
+        my $code    = $tx->error->{code};
+        my $message = $tx->error->{message};
+        my $body    = $tx->result->body;
+        return ("$code: $message: $body", $tx->result->json);
+    }
+    elsif ($tx->result->code != 200) {
+        return ("Unexpected status code: " . $tx->result->code, $tx->result->json);
+    }
+    else {
+        return (undef, $tx->result->json);
+    }
 }
 
 1;
@@ -264,6 +329,9 @@ L<https://docs.microsoft.com/en-us/rest/api/searchservice/addupdate-or-delete-do
 Create an index for @fields.  There are a lot of field options.  Please look at the microsoft site
 for complete details.  I'll have an example of one below.
 
+This method returns an error string (or undef) and a hash representing the json response
+returned by Azure.  You should check for the error string after each call.
+
 L<https://docs.microsoft.com/en-us/rest/api/searchservice/create-index>
 
 Please note the rules on the 'key' field.  They can't be utf8 but other string fields can be.
@@ -274,19 +342,32 @@ Update an index for @fields.  This is a very finicky operation.  It does not see
 change fields from searchable => false to true, but it does allow you to add new fields to the
 index.
 
+This method returns an error string (or undef) and a hash representing the json response
+returned by Azure.  You should check for the error string after each call.
+
 L<https://docs.microsoft.com/en-us/rest/api/searchservice/update-index>
 
 =item delete_index
 
 Delete the index.
 
+This method returns an error string (or undef) and a hash representing the json response
+returned by Azure.  You should check for the error string after each call.
+
 =item get_index
 
 Return details on the index.
 
+This method returns an error string (or undef) and a hash representing the json response
+returned by Azure.  You should check for the error string after each call.
+
 =item get_indexes
 
 Return details on all indexes.
+
+This method returns an error string (or undef) and a hash representing the json response
+returned by Azure.  You should check for the error string after each call.
+
 
 =back
 
@@ -301,7 +382,7 @@ Return details on all indexes.
     );
 
     if ($error) {
-        warn "Error searching_documents: $error";
+        die "Error searching_documents: $error";
     }
     else {
         say "NUMBER OF RESULTS: " . $results->{'@odata.count'};
@@ -338,7 +419,7 @@ Return details on all indexes.
     );
 
     if ($error) {
-        warn "Error upload_documents: $error";
+        die "Error upload_documents: $error";
     }
 
     #Modify existing documents with new hash entries:
@@ -348,7 +429,7 @@ Return details on all indexes.
     # Review errors:
 
     if ($error) {
-        warn "Error merge_documents: $error";
+        die "Error merge_documents: $error";
     }
     else {
         for my $document (@{$results}) {
@@ -366,7 +447,7 @@ Return details on all indexes.
 
     Create an index with a variety (but not a complete slice) of the available options:
 
-    my $tx = $azs->create_index(
+    my ($error, $result) = $azs->create_index(
         {
             name => 'name',
             type => 'Edm.String',
